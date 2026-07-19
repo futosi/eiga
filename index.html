@@ -25,8 +25,7 @@
   .seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px}
   .seg button{border:0;background:none;color:var(--sub);font-weight:700;font-size:13.5px;padding:7px 15px;border-radius:999px;cursor:pointer;transition:.15s}
   .seg button.on{background:var(--accent);color:#fff}
-  .tgroup{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
-  .toggle{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;
+  .toggle{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;
     background:var(--card);border:1px solid var(--line);border-radius:999px;padding:7px 13px;cursor:pointer;user-select:none;color:var(--ink)}
   .toggle .dot{width:36px;height:21px;border-radius:999px;background:#ded6c8;position:relative;transition:.2s}
   .toggle .dot::after{content:"";position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
@@ -64,21 +63,6 @@
   .chip.fam{background:rgba(110,151,189,.14);color:var(--fam)}
   .chip.mubi{background:rgba(198,127,84,.15);color:var(--accent-d)}
   .chip.now{background:rgba(125,158,111,.16);color:var(--now)}
-  /* コンパクト表示：本文内の日付＋ステータス（既定は非表示、バナー時はサムネ上に表示） */
-  .metarow{display:none;align-items:center;gap:8px;margin-bottom:4px}
-  .m-date{font-size:12px;font-weight:700;color:var(--accent-d)}
-  .m-badge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;color:#fff}
-  .m-badge.soon{background:var(--accent)}
-  .m-badge.now{background:var(--now)}
-  .m-badge.later{background:var(--chip);color:var(--accent-d)}
-  /* コンパクト表示：左に正方形サムネ */
-  .compact .card{display:flex;align-items:flex-start}
-  .compact .thumb{width:116px;min-width:116px;height:116px}
-  .compact .thumb .ov-date,.compact .thumb .ov-badge{display:none}
-  .compact .body{flex:1;min-width:0;padding:11px 14px 12px}
-  .compact .metarow{display:flex}
-  .compact .title{font-size:14.5px}
-  @media(max-width:520px){.compact .thumb{width:94px;min-width:94px;height:94px}}
   .detail{display:none;margin-top:13px;padding-top:13px;border-top:1px solid var(--line);font-size:13.5px}
   .card.open .detail{display:block}
   .detail .meta{font-size:12px;color:var(--sub);margin:0 0 8px}
@@ -107,10 +91,7 @@
       <button data-v="list" class="on">📋 リスト</button>
       <button data-v="cal">🗓 カレンダー</button>
     </div>
-    <div class="tgroup">
-      <div class="toggle on" id="compactToggle"><span class="dot"></span><span>コンパクト</span></div>
-      <div class="toggle on" id="kidToggle"><span class="dot"></span><span>子ども向けだけ</span></div>
-    </div>
+    <div class="toggle on" id="kidToggle"><span class="dot"></span><span>子ども向けだけ</span></div>
   </div>
   <div class="legend">
     <span><i class="swatch" style="background:var(--kid)"></i>幼児・子ども向け</span>
@@ -135,7 +116,7 @@ const DATA = window.MOVIE_DATA || {movies:[], theater:"二子玉川 109シネマ
 const MOVIES = DATA.movies || [];
 const WD = ["日","月","火","水","木","金","土"];
 let TODAY = new Date(); TODAY.setHours(0,0,0,0);
-let view = "list", kidOnly = true, compact = true;
+let view = "list", kidOnly = true;
 
 function parse(d){ if(!d) return null; const [y,m,day]=d.split("-").map(Number); return new Date(y,m-1,day); }
 function catLabel(c){ return c==="kid"?"子ども向け":c==="fam"?"ファミリー":"一般"; }
@@ -172,13 +153,10 @@ function card(m){
   const thumb = m.img
     ? `<div class="thumb"><img loading="lazy" src="${m.img}" alt="">${overlays}</div>`
     : `<div class="thumb ph">${overlays}<span>🎬</span></div>`;
-  const mdate = dt ? `${dt.getMonth()+1}/${dt.getDate()}(${WD[dt.getDay()]})` : "日付未定";
-  const metarow = `<div class="metarow"><span class="m-date">${mdate}</span><span class="m-badge ${s.cls}">${s.t}</span></div>`;
   const meta = [m.director&&("監督: "+m.director), m.actor&&("出演: "+m.actor.slice(0,40)+(m.actor.length>40?"…":""))].filter(Boolean).join(" ／ ");
   return `<div class="card" data-t="${encodeURIComponent(m.t)}">
     ${thumb}
     <div class="body">
-      ${metarow}
       <p class="title">${m.t}</p>
       <div class="chips">${chips(m)}</div>
       <div class="detail">
@@ -221,9 +199,7 @@ function renderCal(){
   return h || `<div class="empty">条件に合う映画がありません。</div>`;
 }
 function render(){
-  const stage=document.getElementById("stage");
-  stage.className = compact ? "compact" : "";
-  stage.innerHTML = view==="list"?renderList():renderCal();
+  document.getElementById("stage").innerHTML = view==="list"?renderList():renderCal();
   bind();
 }
 
@@ -233,8 +209,6 @@ document.querySelectorAll("#seg button").forEach(b=>b.addEventListener("click",(
 }));
 const kt=document.getElementById("kidToggle");
 kt.addEventListener("click",()=>{ kidOnly=!kidOnly; kt.classList.toggle("on",kidOnly); render(); });
-const ct=document.getElementById("compactToggle");
-ct.addEventListener("click",()=>{ compact=!compact; ct.classList.toggle("on",compact); render(); });
 
 // フッター
 document.getElementById("thlink").href = DATA.theaterUrl || "#";
