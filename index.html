@@ -1,0 +1,212 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>こども映画カレンダー｜二子玉川109シネマズ</title>
+<style>
+  :root{
+    --bg:#fff7ed; --card:#ffffff; --ink:#3a2e26; --sub:#8a7a6d;
+    --line:#f0e3d6; --accent:#ff8a3d;
+    --kid:#ff6b6b; --fam:#4dabf7; --gen:#adb5bd; --now:#37b24d;
+    --chip:#fff0e0; --shadow:0 6px 20px rgba(120,80,40,.10);
+    --radius:18px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#241d17; --card:#332a22; --ink:#f5ece2; --sub:#b6a595;
+      --line:#463a2f; --accent:#ff9d5c; --chip:#413324; --shadow:0 6px 20px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,system-ui,sans-serif;
+    line-height:1.6;padding-bottom:40px}
+  header{position:sticky;top:0;z-index:20;background:linear-gradient(135deg,var(--accent),#ff6b6b);
+    color:#fff;padding:14px 18px}
+  h1{margin:0;font-size:19px;font-weight:800;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
+  .sub{margin:3px 0 0;font-size:12.5px;opacity:.95;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .sub .pin{background:rgba(255,255,255,.22);padding:1px 8px;border-radius:999px;font-weight:700}
+  .wrap{max-width:820px;margin:0 auto;padding:16px 14px}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+  .seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px;box-shadow:var(--shadow)}
+  .seg button{border:0;background:none;color:var(--sub);font-weight:700;font-size:13.5px;padding:7px 15px;border-radius:999px;cursor:pointer}
+  .seg button.on{background:var(--accent);color:#fff}
+  .toggle{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;
+    background:var(--card);border:1px solid var(--line);border-radius:999px;padding:7px 13px;cursor:pointer;box-shadow:var(--shadow);user-select:none}
+  .toggle .dot{width:34px;height:20px;border-radius:999px;background:var(--line);position:relative;transition:.2s}
+  .toggle .dot::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .toggle.on .dot{background:var(--kid)}
+  .toggle.on .dot::after{left:16px}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--sub);margin:-2px 0 14px}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .swatch{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .month{font-size:15px;font-weight:800;margin:22px 2px 10px;color:var(--sub);display:flex;align-items:center;gap:8px}
+  .month::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:14px 15px;margin-bottom:12px;position:relative;overflow:hidden;cursor:pointer;transition:transform .12s}
+  .card:active{transform:scale(.99)}
+  .card .barleft{position:absolute;left:0;top:0;bottom:0;width:5px}
+  .cd-top{display:flex;gap:12px;align-items:flex-start}
+  .cd-date{min-width:56px;text-align:center;flex:0 0 auto}
+  .cd-date .big{font-size:27px;font-weight:800;line-height:1;color:var(--accent)}
+  .cd-date .ym{font-size:11px;color:var(--sub);font-weight:700;margin-top:2px}
+  .cd-date .wd{font-size:10.5px;color:var(--sub);margin-top:1px}
+  .cd-body{flex:1;min-width:0}
+  .title{font-size:15.5px;font-weight:800;margin:0 0 5px;letter-spacing:.01em}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 0}
+  .chip{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--chip);color:var(--sub)}
+  .chip.kid{background:rgba(255,107,107,.15);color:var(--kid)}
+  .chip.fam{background:rgba(77,171,247,.15);color:var(--fam)}
+  .chip.mubi{background:rgba(255,138,61,.16);color:var(--accent)}
+  .chip.now{background:rgba(55,178,77,.16);color:var(--now)}
+  .countdown{font-size:11.5px;font-weight:700;color:var(--kid);margin-top:5px}
+  .badge{display:inline-block;font-size:11.5px;font-weight:800;padding:2px 9px;border-radius:999px;margin-top:5px}
+  .badge.soon{color:#fff;background:var(--kid)}
+  .badge.now{color:#fff;background:var(--now)}
+  .detail{display:none;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);font-size:13.5px}
+  .card.open .detail{display:block}
+  .detail .meta{font-size:12px;color:var(--sub);margin:0 0 8px}
+  .detail .k{font-weight:800;font-size:12px;color:var(--sub);display:flex;align-items:center;gap:5px;margin:10px 0 4px}
+  .mubi-box{background:var(--chip);border-radius:12px;padding:10px 12px}
+  .mubi-box .price{font-weight:800;color:var(--accent);font-size:14px}
+  .mubi-box .perk{font-size:12.5px;margin-top:4px}
+  .nomubi{color:var(--sub);font-size:12.5px}
+  .links{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .links a{font-size:12.5px;font-weight:700;text-decoration:none;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:6px 13px}
+  .links a.fill{background:var(--accent);color:#fff}
+  .empty{text-align:center;color:var(--sub);padding:40px 0;font-size:14px}
+  footer{text-align:center;color:var(--sub);font-size:11px;margin-top:26px;padding:0 14px;line-height:1.7}
+  footer a{color:var(--sub)}
+</style>
+
+<header>
+  <h1>🎬 こども映画カレンダー</h1>
+  <div class="sub"><span class="pin">📍 二子玉川 109シネマズ</span><span>公開日・ムビチケ特典がひと目でわかる</span></div>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="seg" id="seg">
+      <button data-v="list" class="on">📋 リスト</button>
+      <button data-v="cal">🗓 カレンダー</button>
+    </div>
+    <div class="toggle on" id="kidToggle"><span class="dot"></span><span>子ども向けだけ</span></div>
+  </div>
+  <div class="legend">
+    <span><i class="swatch" style="background:var(--kid)"></i>幼児・子ども向け</span>
+    <span><i class="swatch" style="background:var(--fam)"></i>ファミリー</span>
+    <span><i class="swatch" style="background:var(--now)"></i>上映中</span>
+    <span>🎟 ＝ムビチケ特典あり</span>
+  </div>
+  <div id="stage"></div>
+</div>
+
+<footer>
+  上映情報は <a id="thlink" href="#" target="_blank" rel="noopener">109シネマズ二子玉川</a> の上映中・公開予定作品を元に週1回自動更新。<span id="updated"></span><br>
+  ムビチケ特典は手動まとめ。価格・特典・公開日は変更される場合があります。おでかけ前に公式サイトでご確認ください。
+</footer>
+
+<script src="data.js"></script>
+<script>
+const DATA = window.MOVIE_DATA || {movies:[], theater:"二子玉川 109シネマズ", theaterUrl:"https://109cinemas.net/futakotamagawa/"};
+const MOVIES = DATA.movies || [];
+const WD = ["日","月","火","水","木","金","土"];
+let TODAY = new Date(); TODAY.setHours(0,0,0,0);
+let view = "list", kidOnly = true;
+
+function parse(d){ if(!d) return null; const [y,m,day]=d.split("-").map(Number); return new Date(y,m-1,day); }
+function catLabel(c){ return c==="kid"?"子ども向け":c==="fam"?"ファミリー":"一般"; }
+function catColor(c){ return c==="kid"?"var(--kid)":c==="fam"?"var(--fam)":"var(--gen)"; }
+function daysLeft(dt){ return dt? Math.round((dt - TODAY)/86400000) : null; }
+
+function visible(){ return MOVIES.filter(m=> kidOnly ? m.cat!=="gen" : true); }
+
+function statusBadge(m){
+  const dt = parse(m.date), dl = daysLeft(dt);
+  if(m.status==="now" || (dl!==null && dl<=0)) return `<span class="badge now">🎬 上映中</span>`;
+  if(dl===0) return `<span class="badge soon">🎉 本日公開！</span>`;
+  if(dl!==null && dl>0 && dl<=14) return `<span class="badge soon">あと ${dl} 日で公開</span>`;
+  if(dl!==null && dl>0) return `<span class="countdown">あと ${dl} 日</span>`;
+  return `<span class="badge soon">公開予定</span>`;
+}
+function chips(m){
+  let h = `<span class="chip ${m.cat==='kid'?'kid':m.cat==='fam'?'fam':''}">${catLabel(m.cat)}</span>`;
+  h += `<span class="chip">${m.age||""}</span>`;
+  if(m.env) h += `<span class="chip">${m.env.split(",")[0]}</span>`;
+  if(m.mubi) h += `<span class="chip mubi">🎟 ムビチケ特典</span>`;
+  return h;
+}
+function mubiHtml(m){
+  if(!m.mubi) return `<p class="nomubi">この作品のムビチケ特典情報は未登録です。下のリンクから公式サイトでご確認ください。</p>`;
+  return `<div class="mubi-box"><div class="price">💴 ${m.mubi.price}</div><div class="perk">🎁 ${m.mubi.perk}</div></div>`;
+}
+function card(m){
+  const dt = parse(m.date);
+  const dd = dt ? dt.getDate() : "?";
+  const mm = dt ? (dt.getMonth()+1)+"月" : "";
+  const wd = dt ? "("+WD[dt.getDay()]+")" : "";
+  const meta = [m.director&&("監督: "+m.director), m.actor&&("出演: "+m.actor.slice(0,40)+(m.actor.length>40?"…":""))].filter(Boolean).join(" ／ ");
+  return `<div class="card" data-t="${encodeURIComponent(m.t)}">
+    <span class="barleft" style="background:${catColor(m.cat)}"></span>
+    <div class="cd-top">
+      <div class="cd-date"><div class="big">${dd}</div><div class="ym">${mm}</div><div class="wd">${wd}</div></div>
+      <div class="cd-body">
+        <p class="title">${m.t}</p>
+        ${statusBadge(m)}
+        <div class="chips">${chips(m)}</div>
+      </div>
+    </div>
+    <div class="detail">
+      ${meta?`<p class="meta">${meta}</p>`:""}
+      <div class="k">🎟 ムビチケ（前売り券）特典</div>
+      ${mubiHtml(m)}
+      <div class="links">
+        <a class="fill" href="${m.site}" target="_blank" rel="noopener">二子玉川の上映時間・詳細 ↗</a>
+        <a href="https://www.google.com/search?q=${encodeURIComponent(m.t+' ムビチケ 特典')}" target="_blank" rel="noopener">ムビチケ特典を調べる ↗</a>
+      </div>
+    </div>
+  </div>`;
+}
+function bind(){ document.querySelectorAll(".card").forEach(c=>c.addEventListener("click",e=>{ if(!e.target.closest("a")) c.classList.toggle("open"); })); }
+
+function renderList(){
+  const list = visible();
+  const up = list.filter(m=>{ const dl=daysLeft(parse(m.date)); return m.status!=="now" && dl!==null && dl>0; });
+  const now = list.filter(m=> m.status==="now" || (()=>{const dl=daysLeft(parse(m.date));return dl!==null&&dl<=0;})());
+  up.sort((a,b)=> b.kidScore-a.kidScore || (a.date||"9").localeCompare(b.date||"9"));
+  now.sort((a,b)=> b.kidScore-a.kidScore || (b.date||"").localeCompare(a.date||""));
+  let h="";
+  if(up.length){ h+=`<div class="month">👶 子ども向け優先・これから公開</div>`+up.map(card).join(""); }
+  if(now.length){ h+=`<div class="month">🎬 いま二子玉川で上映中</div>`+now.map(card).join(""); }
+  if(!h) h=`<div class="empty">条件に合う映画がありません。</div>`;
+  return h;
+}
+function renderCal(){
+  const list = visible();
+  const by={};
+  list.forEach(m=>{ const dt=parse(m.date); const k=dt?`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`:"9999-99"; (by[k]||=[]).push(m); });
+  let h="";
+  Object.keys(by).sort().forEach(k=>{
+    const [y,mo]=k.split("-");
+    const label = k==="9999-99" ? "日付未定" : `${y}年${Number(mo)}月`;
+    const items = by[k].sort((a,b)=> (a.date||"9").localeCompare(b.date||"9") || b.kidScore-a.kidScore);
+    h+=`<div class="month">🗓 ${label}</div>`+items.map(card).join("");
+  });
+  return h || `<div class="empty">条件に合う映画がありません。</div>`;
+}
+function render(){
+  document.getElementById("stage").innerHTML = view==="list"?renderList():renderCal();
+  bind();
+}
+
+document.querySelectorAll("#seg button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#seg button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); view=b.dataset.v; render();
+}));
+const kt=document.getElementById("kidToggle");
+kt.addEventListener("click",()=>{ kidOnly=!kidOnly; kt.classList.toggle("on",kidOnly); render(); });
+
+// フッター
+document.getElementById("thlink").href = DATA.theaterUrl || "#";
+if(DATA.updated){ const d=new Date(DATA.updated); document.getElementById("updated").textContent = `最終更新: ${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`; }
+
+render();
+</script>

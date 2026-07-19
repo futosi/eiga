@@ -1,0 +1,35 @@
+name: 映画データ週次更新
+
+on:
+  schedule:
+    - cron: "0 21 * * 4"   # 毎週金曜 6:00 JST（UTC木21:00）に実行
+  workflow_dispatch: {}      # 手動実行も可
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: データ取得・data.js 生成
+        run: node scripts/update.mjs
+
+      - name: 変更があればコミット
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain data.js data.json)" ]; then
+            git add data.js data.json
+            git commit -m "chore: 映画データ自動更新 ($(date -u +%Y-%m-%d))"
+            git push
+            echo "更新をコミットしました"
+          else
+            echo "変更なし"
+          fi
