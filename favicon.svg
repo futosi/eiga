@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="15" fill="#c67f54"/>
+  <!-- カチンコ上部（斜めストライプ） -->
+  <clipPath id="bar"><rect x="12" y="13" width="40" height="12" rx="3"/></clipPath>
+  <g clip-path="url(#bar)">
+    <rect x="12" y="13" width="40" height="12" fill="#fff"/>
+    <g fill="#c67f54">
+      <polygon points="18,13 26,13 18,25 10,25"/>
+      <polygon points="30,13 38,13 30,25 22,25"/>
+      <polygon points="42,13 50,13 42,25 34,25"/>
+      <polygon points="54,13 62,13 54,25 46,25"/>
+    </g>
+  </g>
+  <!-- カチンコ本体 -->
+  <rect x="12" y="27" width="40" height="25" rx="4" fill="#fff"/>
+  <!-- 再生マーク -->
+  <polygon points="28,34 28,45 39,39.5" fill="#c67f54"/>
+</svg>
