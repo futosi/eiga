@@ -42,18 +42,24 @@
   .swatch{width:12px;height:12px;border-radius:4px;display:inline-block}
   .month{font-size:16px;font-weight:800;margin:24px 2px 12px;color:var(--accent);display:flex;align-items:center;gap:8px}
   .card{background:var(--card);border-radius:var(--radius);
-    box-shadow:var(--shadow);padding:15px 16px;margin-bottom:13px;position:relative;overflow:hidden;cursor:pointer;transition:transform .12s, box-shadow .12s}
+    box-shadow:var(--shadow);margin-bottom:14px;position:relative;overflow:hidden;cursor:pointer;transition:transform .12s, box-shadow .12s}
   .card:active{transform:scale(.985)}
   .card:hover{box-shadow:0 12px 28px rgba(255,120,80,.28)}
-  .card .barleft{position:absolute;left:0;top:0;bottom:0;width:6px}
-  .cd-top{display:flex;gap:13px;align-items:flex-start}
-  .cd-date{min-width:60px;flex:0 0 auto;text-align:center;background:linear-gradient(160deg,#fff3df,#ffe6cf);
-    border-radius:16px;padding:9px 4px 7px}
-  .cd-date .big{font-size:28px;font-weight:800;line-height:1;color:var(--accent)}
-  .cd-date .ym{font-size:11px;color:var(--sub);font-weight:800;margin-top:2px}
-  .cd-date .wd{font-size:10.5px;color:var(--sub);margin-top:1px}
-  .cd-body{flex:1;min-width:0}
-  .title{font-size:16px;font-weight:800;margin:2px 0 5px;letter-spacing:.01em}
+  /* サムネイル（横長バナー） */
+  .thumb{position:relative;width:100%;aspect-ratio:16/9;background-size:cover;background-position:center;
+    background-color:#ffe6cf;display:block}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .thumb.ph{background:linear-gradient(135deg,#ffd9a8,#ff9db3);display:flex;align-items:center;justify-content:center;font-size:44px}
+  .thumb .catbar{position:absolute;left:0;top:0;bottom:0;width:7px}
+  .ov-date{position:absolute;left:10px;top:10px;background:rgba(255,255,255,.94);color:var(--accent);
+    font-weight:800;font-size:14px;line-height:1.05;padding:6px 11px;border-radius:14px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+  .ov-date small{display:block;font-size:9.5px;color:var(--sub);font-weight:700;margin-top:1px}
+  .ov-badge{position:absolute;right:10px;top:10px;font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.22)}
+  .ov-badge.soon{background:linear-gradient(120deg,var(--pink),var(--accent))}
+  .ov-badge.now{background:linear-gradient(120deg,#2fc46b,#4bd07f)}
+  .ov-badge.later{background:rgba(255,255,255,.94);color:var(--accent)}
+  .body{padding:12px 15px 14px}
+  .title{font-size:16px;font-weight:800;margin:0 0 5px;letter-spacing:.01em}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0 0}
   .chip{font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;background:var(--chip);color:var(--sub)}
   .chip.kid{background:rgba(255,93,158,.16);color:var(--kid)}
@@ -126,11 +132,11 @@ function visible(){ return MOVIES.filter(m=> kidOnly ? m.cat!=="gen" : true); }
 
 function statusBadge(m){
   const dt = parse(m.date), dl = daysLeft(dt);
-  if(m.status==="now" || (dl!==null && dl<=0)) return `<span class="badge now">🎬 上映中</span>`;
-  if(dl===0) return `<span class="badge soon">🎉 本日公開！</span>`;
-  if(dl!==null && dl>0 && dl<=14) return `<span class="badge soon">あと ${dl} 日で公開</span>`;
-  if(dl!==null && dl>0) return `<span class="countdown">あと ${dl} 日</span>`;
-  return `<span class="badge soon">公開予定</span>`;
+  if(m.status==="now" || (dl!==null && dl<=0)) return `<span class="ov-badge now">🎬 上映中</span>`;
+  if(dl===0) return `<span class="ov-badge soon">🎉 本日公開</span>`;
+  if(dl!==null && dl>0 && dl<=14) return `<span class="ov-badge soon">あと${dl}日</span>`;
+  if(dl!==null && dl>0) return `<span class="ov-badge later">あと${dl}日</span>`;
+  return `<span class="ov-badge later">公開予定</span>`;
 }
 function chips(m){
   let h = `<span class="chip ${m.cat==='kid'?'kid':m.cat==='fam'?'fam':''}">${catLabel(m.cat)}</span>`;
@@ -145,27 +151,26 @@ function mubiHtml(m){
 }
 function card(m){
   const dt = parse(m.date);
-  const dd = dt ? dt.getDate() : "?";
-  const mm = dt ? (dt.getMonth()+1)+"月" : "";
-  const wd = dt ? "("+WD[dt.getDay()]+")" : "";
+  const dstr = dt ? `${dt.getMonth()+1}/${dt.getDate()}<small>${WD[dt.getDay()]}曜</small>` : `<small>日付未定</small>`;
+  const cb = `<span class="catbar" style="background:${catColor(m.cat)}"></span>`;
+  const overlays = `${cb}<span class="ov-date">${dstr}</span>${statusBadge(m)}`;
+  const thumb = m.img
+    ? `<div class="thumb"><img loading="lazy" src="${m.img}" alt="">${overlays}</div>`
+    : `<div class="thumb ph">${overlays}<span>🎬</span></div>`;
   const meta = [m.director&&("監督: "+m.director), m.actor&&("出演: "+m.actor.slice(0,40)+(m.actor.length>40?"…":""))].filter(Boolean).join(" ／ ");
   return `<div class="card" data-t="${encodeURIComponent(m.t)}">
-    <span class="barleft" style="background:${catColor(m.cat)}"></span>
-    <div class="cd-top">
-      <div class="cd-date"><div class="big">${dd}</div><div class="ym">${mm}</div><div class="wd">${wd}</div></div>
-      <div class="cd-body">
-        <p class="title">${m.t}</p>
-        ${statusBadge(m)}
-        <div class="chips">${chips(m)}</div>
-      </div>
-    </div>
-    <div class="detail">
-      ${meta?`<p class="meta">${meta}</p>`:""}
-      <div class="k">🎟 ムビチケ（前売り券）特典</div>
-      ${mubiHtml(m)}
-      <div class="links">
-        <a class="fill" href="${m.site}" target="_blank" rel="noopener">二子玉川の上映時間・詳細 ↗</a>
-        <a class="ghost" href="https://www.google.com/search?q=${encodeURIComponent(m.t+' ムビチケ 特典')}" target="_blank" rel="noopener">ムビチケ特典を調べる ↗</a>
+    ${thumb}
+    <div class="body">
+      <p class="title">${m.t}</p>
+      <div class="chips">${chips(m)}</div>
+      <div class="detail">
+        ${meta?`<p class="meta">${meta}</p>`:""}
+        <div class="k">🎟 ムビチケ（前売り券）特典</div>
+        ${mubiHtml(m)}
+        <div class="links">
+          <a class="fill" href="${m.site}" target="_blank" rel="noopener">二子玉川の上映時間・詳細 ↗</a>
+          <a class="ghost" href="https://www.google.com/search?q=${encodeURIComponent(m.t+' ムビチケ 特典')}" target="_blank" rel="noopener">ムビチケ特典を調べる ↗</a>
+        </div>
       </div>
     </div>
   </div>`;

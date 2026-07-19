@@ -61,10 +61,14 @@ async function movieInfo(id) {
   if (!title) return null;
   const rd = grab("release_date"); // "2026.07.24"
   const date = rd ? rd.replace(/\./g, "-") : "";
+  // 作品ページの /media/ サムネイル画像（640x360）を1枚取得
+  const imgM = html.match(/\/media\/[A-Za-z0-9_=/-]+\.(?:jpg|jpeg|png|webp)/i);
+  const img = imgM ? BASE + imgM[0] : "";
   return {
     id,
     t: title,
     date,                       // YYYY-MM-DD（不明なら空）
+    img,                        // サムネイル画像URL（無ければ空）
     actor: grab("actor"),
     director: grab("director"),
     env: grab("facility_environment"),
