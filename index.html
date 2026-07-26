@@ -79,6 +79,8 @@
   .links a{font-size:12.5px;font-weight:700;text-decoration:none;border-radius:999px;padding:8px 15px}
   .links a.fill{background:var(--accent);color:#fff}
   .links a.ghost{color:var(--accent-d);border:1px solid var(--accent)}
+  .calbtn{font-family:inherit;font-size:12.5px;font-weight:700;border:0;cursor:pointer;
+    border-radius:999px;padding:8px 15px;background:var(--now);color:#fff}
   .empty{text-align:center;color:var(--sub);padding:40px 0;font-size:14px}
   footer{text-align:center;color:var(--sub);font-size:11px;margin-top:28px;padding:0 14px;line-height:1.7}
   footer a{color:var(--accent-d);font-weight:600}
@@ -91,10 +93,6 @@
 
 <div class="wrap">
   <div class="controls">
-    <div class="seg" id="seg">
-      <button data-v="list" class="on">📋 リスト</button>
-      <button data-v="cal">🗓 カレンダー</button>
-    </div>
     <div class="toggle on" id="kidToggle"><span class="dot"></span><span>子ども向けだけ</span></div>
   </div>
   <div class="legend">
@@ -120,7 +118,7 @@ const DATA = window.MOVIE_DATA || {movies:[], theater:"二子玉川 109シネマ
 const MOVIES = DATA.movies || [];
 const WD = ["日","月","火","水","木","金","土"];
 let TODAY = new Date(); TODAY.setHours(0,0,0,0);
-let view = "list", kidOnly = true;
+let kidOnly = true;
 
 function parse(d){ if(!d) return null; const [y,m,day]=d.split("-").map(Number); return new Date(y,m-1,day); }
 function catLabel(c){ return c==="kid"?"子ども向け":c==="fam"?"ファミリー":"一般"; }
@@ -169,48 +167,61 @@ function card(m){
         ${mubiHtml(m)}
         <div class="links">
           <a class="fill" href="${m.site}" target="_blank" rel="noopener">二子玉川の上映時間・詳細 ↗</a>
+          ${parse(m.date)?`<button class="calbtn" type="button" onclick="addCal('${m.id}')">📅 カレンダーに追加</button>`:""}
           <a class="ghost" href="https://www.google.com/search?q=${encodeURIComponent(m.t+' ムビチケ 特典')}" target="_blank" rel="noopener">ムビチケ特典を調べる ↗</a>
         </div>
       </div>
     </div>
   </div>`;
 }
-function bind(){ document.querySelectorAll(".card").forEach(c=>c.addEventListener("click",e=>{ if(!e.target.closest("a")) c.classList.toggle("open"); })); }
+function bind(){ document.querySelectorAll(".card").forEach(c=>c.addEventListener("click",e=>{ if(!e.target.closest("a,button")) c.classList.toggle("open"); })); }
 
 function renderList(){
   const list = visible();
   const up = list.filter(m=>{ const dl=daysLeft(parse(m.date)); return m.status!=="now" && dl!==null && dl>0; });
   const now = list.filter(m=> m.status==="now" || (()=>{const dl=daysLeft(parse(m.date));return dl!==null&&dl<=0;})());
-  up.sort((a,b)=> b.kidScore-a.kidScore || (a.date||"9").localeCompare(b.date||"9"));
   now.sort((a,b)=> b.kidScore-a.kidScore || (b.date||"").localeCompare(a.date||""));
+  up.sort((a,b)=> b.kidScore-a.kidScore || (a.date||"9").localeCompare(b.date||"9"));
   let h="";
-  if(up.length){ h+=`<div class="month">👶 子ども向け優先・これから公開</div>`+up.map(card).join(""); }
   if(now.length){ h+=`<div class="month">🎬 いま二子玉川で上映中</div>`+now.map(card).join(""); }
+  if(up.length){ h+=`<div class="month">👶 子ども向け優先・これから公開</div>`+up.map(card).join(""); }
   if(!h) h=`<div class="empty">条件に合う映画がありません。</div>`;
   return h;
 }
-function renderCal(){
-  const list = visible();
-  const by={};
-  list.forEach(m=>{ const dt=parse(m.date); const k=dt?`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`:"9999-99"; (by[k]||=[]).push(m); });
-  let h="";
-  Object.keys(by).sort().forEach(k=>{
-    const [y,mo]=k.split("-");
-    const label = k==="9999-99" ? "日付未定" : `${y}年${Number(mo)}月`;
-    const items = by[k].sort((a,b)=> (a.date||"9").localeCompare(b.date||"9") || b.kidScore-a.kidScore);
-    h+=`<div class="month">🗓 ${label}</div>`+items.map(card).join("");
-  });
-  return h || `<div class="empty">条件に合う映画がありません。</div>`;
+// カレンダー(.ics)を生成してダウンロード（iPhone/iPad/PCのカレンダーに追加）
+function addCal(id){
+  const m = MOVIES.find(x=>String(x.id)===String(id));
+  if(!m) return;
+  const dt = parse(m.date);
+  if(!dt){ alert("公開日が未定のため追加できません"); return; }
+  const pad=n=>String(n).padStart(2,"0");
+  const ymd=d=>`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+  const end=new Date(dt.getTime()+86400000);
+  const stamp=new Date().toISOString().replace(/[-:]/g,"").split(".")[0]+"Z";
+  const esc=s=>String(s||"").replace(/([,;\\])/g,"\\$1").replace(/\n/g,"\\n");
+  const ics=[
+    "BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//kodomo-eiga//JP","CALSCALE:GREGORIAN","METHOD:PUBLISH",
+    "BEGIN:VEVENT","UID:eiga-"+m.id+"@futosi.github.io","DTSTAMP:"+stamp,
+    "DTSTART;VALUE=DATE:"+ymd(dt),"DTEND;VALUE=DATE:"+ymd(end),
+    "SUMMARY:🎬 "+esc(m.t)+" 公開日","LOCATION:"+esc("109シネマズ二子玉川"),
+    "DESCRIPTION:"+esc("二子玉川109シネマズで公開\n"+(m.site||"")),
+    "URL:"+(m.site||""),
+    "BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+esc(m.t+" 公開日"),"TRIGGER:-P1D","END:VALARM",
+    "END:VEVENT","END:VCALENDAR"
+  ].join("\r\n");
+  const blob=new Blob([ics],{type:"text/calendar;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download=(m.t.replace(/[\\/:*?"<>|]/g,"").slice(0,24)||"movie")+".ics";
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ a.remove(); URL.revokeObjectURL(url); }, 1500);
 }
+window.addCal=addCal;
 function render(){
-  document.getElementById("stage").innerHTML = view==="list"?renderList():renderCal();
+  document.getElementById("stage").innerHTML = renderList();
   bind();
 }
 
-document.querySelectorAll("#seg button").forEach(b=>b.addEventListener("click",()=>{
-  document.querySelectorAll("#seg button").forEach(x=>x.classList.remove("on"));
-  b.classList.add("on"); view=b.dataset.v; render();
-}));
 const kt=document.getElementById("kidToggle");
 kt.addEventListener("click",()=>{ kidOnly=!kidOnly; kt.classList.toggle("on",kidOnly); render(); });
 
