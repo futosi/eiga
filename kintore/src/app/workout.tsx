@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import Stack from 'expo-router/stack';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -12,7 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ExercisePicker } from '../components/ExercisePicker';
 import { Btn, Card, IconBtn, NumInput, s as ui } from '../components/ui';
@@ -46,7 +47,6 @@ export default function WorkoutScreen() {
       deactivateKeepAwake('workout').catch(() => {});
     };
   }, []);
-  const insets = useSafeAreaInsets();
   const active = useStore((s) => s.active);
   const [picker, setPicker] = useState(false);
   const addExercise = useStore((s) => s.addExerciseToActive);
@@ -112,18 +112,35 @@ export default function WorkoutScreen() {
     );
 
   return (
-    <SafeAreaView style={[ui.screen, { paddingTop: insets.top < 20 ? 44 : 0 }]} edges={['top', 'bottom']}>
-      <View style={st.header}>
-        <IconBtn
-          icon="chevron-down"
-          label="最小化"
-          color={C.text}
-          size={26}
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
-        />
-        <Elapsed startedAt={active.startedAt} />
-        <Btn small label="終了" onPress={finish} />
-      </View>
+    <SafeAreaView style={ui.screen} edges={['bottom']}>
+      {/* 位置と押しやすさが OS 任せになるよう、標準のナビゲーションバーを使う */}
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerBackVisible: false,
+          headerTitle: () => <Elapsed startedAt={active.startedAt} />,
+          headerLeft: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="最小化"
+              hitSlop={14}
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+              style={st.navBtn}>
+              <Ionicons name="chevron-down" size={28} color={C.text} />
+            </Pressable>
+          ),
+          headerRight: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="ワークアウトを終了"
+              hitSlop={14}
+              onPress={finish}
+              style={[st.navBtn, st.finishBtn]}>
+              <Text style={st.finishText}>終了</Text>
+            </Pressable>
+          ),
+        }}
+      />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -354,14 +371,14 @@ function RestBar() {
 }
 
 const st = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 8,
+  navBtn: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  finishBtn: {
+    backgroundColor: C.accent,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    minHeight: 38,
   },
+  finishText: { color: C.onAccent, fontSize: 16, fontWeight: '800' },
   elapsed: { color: C.text, fontSize: 16, fontWeight: '700', fontVariant: ['tabular-nums'] },
   title: { color: C.text, fontSize: 24, fontWeight: '900', paddingVertical: 8, marginBottom: 8 },
   hint: { color: C.sub, fontSize: 13, lineHeight: 19, marginBottom: 14 },
