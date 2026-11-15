@@ -33,7 +33,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="workout"
-          options={{ headerShown: false, presentation: 'fullScreenModal', gestureEnabled: false }}
+          options={{ headerShown: false, gestureEnabled: false }}
         />
         <Stack.Screen name="exercise/[id]" options={{ title: '種目' }} />
         <Stack.Screen name="history/[id]" options={{ title: 'ワークアウト' }} />

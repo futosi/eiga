@@ -12,7 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ExercisePicker } from '../components/ExercisePicker';
 import { Btn, Card, IconBtn, NumInput, s as ui } from '../components/ui';
@@ -46,6 +46,7 @@ export default function WorkoutScreen() {
       deactivateKeepAwake('workout').catch(() => {});
     };
   }, []);
+  const insets = useSafeAreaInsets();
   const active = useStore((s) => s.active);
   const [picker, setPicker] = useState(false);
   const addExercise = useStore((s) => s.addExerciseToActive);
@@ -111,7 +112,7 @@ export default function WorkoutScreen() {
     );
 
   return (
-    <SafeAreaView style={ui.screen} edges={['top', 'bottom']}>
+    <SafeAreaView style={[ui.screen, { paddingTop: insets.top < 20 ? 44 : 0 }]} edges={['top', 'bottom']}>
       <View style={st.header}>
         <IconBtn
           icon="chevron-down"
@@ -354,7 +355,8 @@ const st = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   elapsed: { color: C.text, fontSize: 16, fontWeight: '700', fontVariant: ['tabular-nums'] },
   title: { color: C.text, fontSize: 24, fontWeight: '900', paddingVertical: 8, marginBottom: 8 },
