@@ -355,13 +355,9 @@ function RestBar() {
 
 const st = StyleSheet.create({
   navBtn: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  finishBtn: {
-    backgroundColor: C.accent,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    minHeight: 38,
-  },
-  finishText: { color: C.onAccent, fontSize: 16, fontWeight: '800' },
+  // iOS は右上のボタンを半透明のカプセルで自動的に囲むので、自前の背景は付けない
+  finishBtn: { paddingHorizontal: 6 },
+  finishText: { color: C.accent, fontSize: 17, fontWeight: '800' },
   elapsed: { color: C.text, fontSize: 16, fontWeight: '700', fontVariant: ['tabular-nums'] },
   title: { color: C.text, fontSize: 24, fontWeight: '900', paddingVertical: 8, marginBottom: 8 },
   hint: { color: C.sub, fontSize: 13, lineHeight: 19, marginBottom: 14 },
