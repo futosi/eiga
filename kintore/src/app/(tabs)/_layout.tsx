@@ -29,7 +29,7 @@ export default function TabsLayout() {
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         sceneStyle: { backgroundColor: C.bg },
       }}>
-      <Tabs.Screen name="index" options={{ title: 'ホーム', tabBarIcon: icon('barbell') }} />
+      <Tabs.Screen name="index" options={{ title: 'ホーム', tabBarIcon: icon('body') }} />
       <Tabs.Screen name="history" options={{ title: '履歴', tabBarIcon: icon('calendar') }} />
       <Tabs.Screen name="exercises" options={{ title: '種目', tabBarIcon: icon('list') }} />
       <Tabs.Screen name="progress" options={{ title: '分析', tabBarIcon: icon('stats-chart') }} />

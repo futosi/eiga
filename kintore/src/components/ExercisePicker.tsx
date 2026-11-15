@@ -4,13 +4,13 @@ import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, Vi
 
 import { useExercises } from '../lib/store';
 import { C } from '../lib/theme';
-import { EQUIP_LABEL, PART_LABEL, PARTS, type BodyPart, type Exercise } from '../lib/types';
+import { KIND_LABEL, PART_LABEL, PARTS, type BodyPart, type Exercise } from '../lib/types';
 import { Chip, Empty, IconBtn, s as ui } from './ui';
 
-export function useExerciseFilter() {
+export function useExerciseFilter(initialPart: BodyPart | null = null) {
   const all = useExercises();
   const [q, setQ] = useState('');
-  const [part, setPart] = useState<BodyPart | null>(null);
+  const [part, setPart] = useState<BodyPart | null>(initialPart);
   const list = useMemo(() => {
     const k = q.trim().toLowerCase();
     return all.filter(
@@ -73,7 +73,7 @@ export function ExerciseRow({
       <View style={{ flex: 1 }}>
         <Text style={st.name}>{ex.name}</Text>
         <Text style={st.meta}>
-          {PART_LABEL[ex.part]}・{EQUIP_LABEL[ex.equip]}
+          {PART_LABEL[ex.part]}・{KIND_LABEL[ex.kind]}
           {ex.custom ? '・カスタム' : ''}
         </Text>
       </View>
@@ -86,12 +86,14 @@ export function ExercisePicker({
   visible,
   onClose,
   onPick,
+  initialPart = null,
 }: {
   visible: boolean;
   onClose: () => void;
   onPick: (ex: Exercise) => void;
+  initialPart?: BodyPart | null;
 }) {
-  const f = useExerciseFilter();
+  const f = useExerciseFilter(initialPart);
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={[ui.screen, { padding: 16 }]}>

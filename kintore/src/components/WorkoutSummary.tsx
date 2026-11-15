@@ -1,26 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
-import {
-  fmtDate,
-  fmtDuration,
-  fmtNum,
-  fmtWeight,
-  isCounted,
-  toUnit,
-  workoutSetCount,
-  workoutVolume,
-} from '../lib/calc';
-import { useExerciseLookup, useStore } from '../lib/store';
+import { fmtDate, fmtDuration, fmtSec, fmtVal, isCounted, workoutTotals } from '../lib/calc';
+import { useExerciseLookup } from '../lib/store';
 import { C } from '../lib/theme';
 import type { Workout } from '../lib/types';
 import { Card, Stat, s as ui } from './ui';
 
 /** 履歴一覧のカード（compact）と詳細画面のヘッダーで共用する */
 export function WorkoutSummary({ workout: w, compact }: { workout: Workout; compact?: boolean }) {
-  const unit = useStore((s) => s.settings.unit);
   const lookup = useExerciseLookup();
   const prCount = w.prs?.length ?? 0;
+  const t = workoutTotals(w, (id) => lookup(id).kind);
 
   return (
     <Card>
@@ -39,26 +30,26 @@ export function WorkoutSummary({ workout: w, compact }: { workout: Workout; comp
 
       <View style={[ui.row, { marginTop: 12 }]}>
         <Stat label="時間" value={fmtDuration((w.finishedAt ?? w.startedAt) - w.startedAt)} />
-        <Stat label="総負荷量" value={fmtNum(Math.round(toUnit(workoutVolume(w), unit)))} unit={unit} />
-        <Stat label="セット" value={String(workoutSetCount(w))} />
+        {t.reps > 0 && <Stat label="合計回数" value={String(t.reps)} unit="回" />}
+        {t.seconds > 0 && <Stat label="保持時間" value={fmtSec(t.seconds)} />}
+        <Stat label="セット" value={String(t.sets)} />
       </View>
 
       {compact && (
         <View style={{ marginTop: 12, gap: 3 }}>
           {w.exercises.slice(0, 4).map((x) => {
+            const ex = lookup(x.exerciseId);
             const sets = x.sets.filter(isCounted);
-            const best = sets.reduce((a, b) => ((b.weight ?? 0) > (a.weight ?? 0) ? b : a), sets[0]);
+            const best = Math.max(0, ...sets.map((s) => s.reps ?? 0));
             return (
               <View key={x.id} style={[ui.row, { justifyContent: 'space-between' }]}>
                 <Text style={st.line} numberOfLines={1}>
-                  {sets.length} × {lookup(x.exerciseId).name}
+                  {ex.name}
                 </Text>
-                {best && (
-                  <Text style={st.lineRight}>
-                    {fmtWeight(best.weight ?? 0, unit)}
-                    {unit} × {best.reps}
-                  </Text>
-                )}
+                <Text style={st.lineRight}>
+                  {sets.length > 1 ? `${sets.length}セット 最大` : ''}
+                  {fmtVal(ex.kind, best)}
+                </Text>
               </View>
             );
           })}

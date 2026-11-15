@@ -14,6 +14,12 @@ import type {
   WorkoutExercise,
 } from './types';
 
+interface StartOptions {
+  routine?: Routine;
+  exerciseIds?: string[];
+  name?: string;
+}
+
 interface State {
   customExercises: Exercise[];
   routines: Routine[];
@@ -25,10 +31,12 @@ interface State {
   bodyWeights: BodyWeight[];
   settings: Settings;
 
-  startWorkout: (routine?: Routine, name?: string) => void;
+  startWorkout: (opts?: StartOptions) => void;
   repeatWorkout: (w: Workout) => void;
   discardWorkout: () => void;
   finishWorkout: () => Workout | null;
+  /** ストレッチなど、外で作った記録をそのまま保存する */
+  addWorkout: (w: Workout) => void;
   renameActive: (name: string) => void;
   addExerciseToActive: (exerciseId: string) => void;
   removeExerciseFromActive: (weId: string) => void;
@@ -52,12 +60,11 @@ interface State {
   resetAll: () => void;
 }
 
-const newSet = (weight: number | null = null, reps: number | null = null): SetEntry => ({
-  id: uid(),
-  weight,
-  reps,
-  done: false,
-});
+const newSet = (reps: number | null = null): SetEntry => ({ id: uid(), reps, done: false });
+
+function findIn(custom: Exercise[], id: string): Exercise | undefined {
+  return BUILTIN_EXERCISES.find((x) => x.id === id) ?? custom.find((x) => x.id === id);
+}
 
 /** 直近の同種目のセット（前回値の表示・初期値に使う） */
 export function lastSetsOf(workouts: Workout[], exerciseId: string): SetEntry[] {
@@ -71,15 +78,21 @@ export function lastSetsOf(workouts: Workout[], exerciseId: string): SetEntry[] 
   return [];
 }
 
-function buildExercise(workouts: Workout[], exerciseId: string, count: number): WorkoutExercise {
+function buildExercise(
+  workouts: Workout[],
+  custom: Exercise[],
+  exerciseId: string,
+  count: number,
+): WorkoutExercise {
   const prev = lastSetsOf(workouts, exerciseId);
+  const ex = findIn(custom, exerciseId);
   const n = Math.max(1, count);
   return {
     id: uid(),
     exerciseId,
     sets: Array.from({ length: n }, (_, i) => {
       const p = prev[Math.min(i, prev.length - 1)];
-      return newSet(p?.weight ?? null, p?.reps ?? null);
+      return newSet(p?.reps ?? (ex?.kind === 'time' ? (ex.hold ?? null) : null));
     }),
   };
 }
@@ -106,7 +119,7 @@ const initial = {
   restEndsAt: null as number | null,
   restTotal: 0,
   bodyWeights: [] as BodyWeight[],
-  settings: { unit: 'kg', restSec: 90, weeklyGoal: 3 } as Settings,
+  settings: { restSec: 60, weeklyGoal: 4 } as Settings,
 };
 
 export const useStore = create<State>()(
@@ -114,24 +127,24 @@ export const useStore = create<State>()(
     (set, get) => ({
       ...initial,
 
-      startWorkout: (routine, name) => {
-        const { workouts } = get();
+      startWorkout: (opts = {}) => {
+        const { workouts, customExercises } = get();
+        const items =
+          opts.routine?.items ?? (opts.exerciseIds ?? []).map((exerciseId) => ({ exerciseId, sets: 3 }));
         set({
           active: {
             id: uid(),
-            name: routine?.name ?? name ?? defaultWorkoutName(),
+            name: opts.routine?.name ?? opts.name ?? defaultWorkoutName(),
             startedAt: Date.now(),
             finishedAt: null,
-            exercises: (routine?.items ?? []).map((it) =>
-              buildExercise(workouts, it.exerciseId, it.sets),
-            ),
+            exercises: items.map((it) => buildExercise(workouts, customExercises, it.exerciseId, it.sets)),
           },
           restEndsAt: null,
         });
       },
 
       repeatWorkout: (w) => {
-        const { workouts } = get();
+        const { workouts, customExercises } = get();
         set({
           active: {
             id: uid(),
@@ -139,7 +152,7 @@ export const useStore = create<State>()(
             startedAt: Date.now(),
             finishedAt: null,
             exercises: w.exercises.map((x) =>
-              buildExercise(workouts, x.exerciseId, x.sets.length),
+              buildExercise(workouts, customExercises, x.exerciseId, x.sets.length),
             ),
           },
           restEndsAt: null,
@@ -153,13 +166,18 @@ export const useStore = create<State>()(
         if (!active) return null;
         // 完了チェックの付いたセットだけを残す
         const exercises = active.exercises
-          .map((x) => ({ ...x, sets: x.sets.filter((s) => s.done && (s.reps ?? 0) > 0) }))
+          .map((x) => ({ ...x, sets: x.sets.filter(isCounted) }))
           .filter((x) => x.sets.length > 0);
         const finished: Workout = { ...active, exercises, finishedAt: Date.now() };
         finished.prs = detectPRs(finished, workouts);
         set({ workouts: [finished, ...workouts], active: null, restEndsAt: null });
         return finished;
       },
+
+      addWorkout: (w) =>
+        set((s) => ({
+          workouts: [w, ...s.workouts].sort((a, b) => b.startedAt - a.startedAt),
+        })),
 
       renameActive: (name) => set((s) => (s.active ? { active: { ...s.active, name } } : {})),
 
@@ -169,7 +187,10 @@ export const useStore = create<State>()(
             ? {
                 active: {
                   ...s.active,
-                  exercises: [...s.active.exercises, buildExercise(s.workouts, exerciseId, 3)],
+                  exercises: [
+                    ...s.active.exercises,
+                    buildExercise(s.workouts, s.customExercises, exerciseId, 3),
+                  ],
                 },
               }
             : {},
@@ -191,7 +212,7 @@ export const useStore = create<State>()(
         set((s) =>
           mapActiveExercise(s, weId, (we) => {
             const last = we.sets[we.sets.length - 1];
-            return { ...we, sets: [...we.sets, newSet(last?.weight ?? null, last?.reps ?? null)] };
+            return { ...we, sets: [...we.sets, newSet(last?.reps ?? null)] };
           }),
         ),
 
@@ -276,7 +297,7 @@ export const useStore = create<State>()(
       resetAll: () => set({ ...initial }),
     }),
     {
-      name: 'liftnote-v1',
+      name: 'jijuu-note-v1',
       version: 1,
       storage: createJSONStorage(() => AsyncStorage),
     },
@@ -285,9 +306,9 @@ export const useStore = create<State>()(
 
 function defaultWorkoutName(): string {
   const h = new Date().getHours();
-  if (h < 11) return '朝のワークアウト';
-  if (h < 17) return '昼のワークアウト';
-  return '夜のワークアウト';
+  if (h < 11) return '朝のトレーニング';
+  if (h < 17) return '昼のトレーニング';
+  return '夜のトレーニング';
 }
 
 export function useExercises(): Exercise[] {
@@ -297,8 +318,7 @@ export function useExercises(): Exercise[] {
 
 export function findExercise(custom: Exercise[], id: string): Exercise {
   return (
-    BUILTIN_EXERCISES.find((x) => x.id === id) ??
-    custom.find((x) => x.id === id) ?? { id, name: '削除された種目', part: 'other', equip: 'other' }
+    findIn(custom, id) ?? { id, name: '削除された種目', part: 'full', kind: 'reps' }
   );
 }
 

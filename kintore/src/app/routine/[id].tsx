@@ -4,26 +4,36 @@ import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { ExercisePicker } from '../../components/ExercisePicker';
 import { Btn, Card, IconBtn, s as ui } from '../../components/ui';
-import { uid } from '../../lib/calc';
+import { fmtSec, uid } from '../../lib/calc';
 import { confirm } from '../../lib/platform';
 import { useExerciseLookup, useStore } from '../../lib/store';
 import { C } from '../../lib/theme';
 import type { RoutineItem } from '../../lib/types';
 
 export default function RoutineEdit() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, type: typeParam } = useLocalSearchParams<{ id: string; type?: string }>();
   const existing = useStore((s) => s.routines.find((r) => r.id === id));
   const saveRoutine = useStore((s) => s.saveRoutine);
   const deleteRoutine = useStore((s) => s.deleteRoutine);
   const lookup = useExerciseLookup();
 
+  const type = existing?.type ?? (typeParam === 'stretch' ? 'stretch' : 'train');
+  const isStretch = type === 'stretch';
+
   const [name, setName] = useState(existing?.name ?? '');
   const [items, setItems] = useState<RoutineItem[]>(existing?.items ?? []);
   const [picker, setPicker] = useState(false);
 
-  const setCount = (i: number, d: number) =>
+  const holdOf = (it: RoutineItem) => it.hold ?? lookup(it.exerciseId).hold ?? 30;
+
+  const adjust = (i: number, d: number) =>
     setItems((xs) =>
-      xs.map((x, j) => (j === i ? { ...x, sets: Math.min(10, Math.max(1, x.sets + d)) } : x)),
+      xs.map((x, j) => {
+        if (j !== i) return x;
+        return isStretch
+          ? { ...x, hold: Math.min(300, Math.max(5, holdOf(x) + d * 5)) }
+          : { ...x, sets: Math.min(10, Math.max(1, x.sets + d)) };
+      }),
     );
   const move = (i: number, d: number) =>
     setItems((xs) => {
@@ -34,21 +44,25 @@ export default function RoutineEdit() {
       return c;
     });
 
+  const totalSec = items.reduce((a, x) => a + holdOf(x), 0);
+
   return (
     <View style={ui.screen}>
       <ScrollView contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
-        <Text style={[ui.sub, { marginBottom: 6 }]}>ルーティン名</Text>
+        <Text style={[ui.sub, { marginBottom: 6 }]}>{isStretch ? 'ストレッチ名' : 'メニュー名'}</Text>
         <TextInput
-          accessibilityLabel="ルーティン名"
+          accessibilityLabel="名前"
           value={name}
           onChangeText={setName}
-          placeholder="例: 胸の日"
+          placeholder={isStretch ? '例: 寝る前のストレッチ' : '例: 腕立て100回'}
           placeholderTextColor={C.dim}
           style={ui.input}
           maxLength={40}
         />
 
-        <Text style={[ui.sub, { marginTop: 20, marginBottom: 8 }]}>種目</Text>
+        <Text style={[ui.sub, { marginTop: 20, marginBottom: 8 }]}>
+          種目{isStretch && items.length > 0 ? `（合計 約${fmtSec(totalSec)}）` : ''}
+        </Text>
         {items.map((it, i) => (
           <Card key={`${it.exerciseId}-${i}`} style={{ marginBottom: 10, padding: 12 }}>
             <View style={[ui.row, { justifyContent: 'space-between' }]}>
@@ -63,9 +77,19 @@ export default function RoutineEdit() {
             </View>
             <View style={[ui.row, { justifyContent: 'space-between', marginTop: 8 }]}>
               <View style={[ui.row, { gap: 10 }]}>
-                <IconBtn icon="remove-circle-outline" label="セットを減らす" size={26} onPress={() => setCount(i, -1)} />
-                <Text style={st.count}>{it.sets} セット</Text>
-                <IconBtn icon="add-circle-outline" label="セットを増やす" size={26} onPress={() => setCount(i, 1)} />
+                <IconBtn
+                  icon="remove-circle-outline"
+                  label={isStretch ? '秒数を減らす' : 'セットを減らす'}
+                  size={26}
+                  onPress={() => adjust(i, -1)}
+                />
+                <Text style={st.count}>{isStretch ? `${holdOf(it)} 秒` : `${it.sets} セット`}</Text>
+                <IconBtn
+                  icon="add-circle-outline"
+                  label={isStretch ? '秒数を増やす' : 'セットを増やす'}
+                  size={26}
+                  onPress={() => adjust(i, 1)}
+                />
               </View>
               <View style={[ui.row, { gap: 10 }]}>
                 <IconBtn icon="arrow-up" label="上へ" onPress={() => move(i, -1)} />
@@ -82,19 +106,19 @@ export default function RoutineEdit() {
           disabled={!name.trim() || items.length === 0}
           style={{ marginTop: 24 }}
           onPress={() => {
-            saveRoutine({ id: existing?.id ?? uid(), name: name.trim(), items });
+            saveRoutine({ id: existing?.id ?? uid(), name: name.trim(), type, items });
             router.back();
           }}
         />
         {existing && (
           <Btn
-            label="ルーティンを削除"
+            label="削除"
             kind="danger"
             icon="trash-outline"
             style={{ marginTop: 12 }}
             onPress={() =>
               confirm(
-                'ルーティンを削除',
+                '削除',
                 `「${existing.name}」を削除します。過去の記録は残ります。`,
                 () => {
                   router.back();
@@ -110,9 +134,13 @@ export default function RoutineEdit() {
 
       <ExercisePicker
         visible={picker}
+        initialPart={isStretch ? 'stretch' : null}
         onClose={() => setPicker(false)}
         onPick={(ex) => {
-          setItems((xs) => [...xs, { exerciseId: ex.id, sets: 3 }]);
+          setItems((xs) => [
+            ...xs,
+            isStretch ? { exerciseId: ex.id, sets: 1, hold: ex.hold ?? 30 } : { exerciseId: ex.id, sets: 3 },
+          ]);
           setPicker(false);
         }}
       />

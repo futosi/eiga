@@ -7,14 +7,7 @@ import { ExerciseFilterBar, ExerciseRow, useExerciseFilter } from '../../compone
 import { Btn, Chip, Empty, IconBtn, s as ui } from '../../components/ui';
 import { useStore } from '../../lib/store';
 import { C } from '../../lib/theme';
-import {
-  EQUIP_LABEL,
-  EQUIPS,
-  PART_LABEL,
-  PARTS,
-  type BodyPart,
-  type Equipment,
-} from '../../lib/types';
+import { PART_LABEL, PARTS, type BodyPart, type Kind } from '../../lib/types';
 
 export default function Exercises() {
   const f = useExerciseFilter();
@@ -48,7 +41,7 @@ function AddExerciseModal({ visible, onClose }: { visible: boolean; onClose: () 
   const add = useStore((s) => s.addCustomExercise);
   const [name, setName] = useState('');
   const [part, setPart] = useState<BodyPart>('chest');
-  const [equip, setEquip] = useState<Equipment>('barbell');
+  const [kind, setKind] = useState<Kind>('reps');
 
   const close = () => {
     setName('');
@@ -68,7 +61,7 @@ function AddExerciseModal({ visible, onClose }: { visible: boolean; onClose: () 
           accessibilityLabel="種目名"
           value={name}
           onChangeText={setName}
-          placeholder="例: ケーブルプルオーバー"
+          placeholder="例: アーチャー腕立て伏せ"
           placeholderTextColor={C.dim}
           style={ui.input}
           maxLength={40}
@@ -81,10 +74,10 @@ function AddExerciseModal({ visible, onClose }: { visible: boolean; onClose: () 
           ))}
         </View>
 
-        <Text style={[ui.sub, { marginTop: 18, marginBottom: 8 }]}>器具</Text>
+        <Text style={[ui.sub, { marginTop: 18, marginBottom: 8 }]}>数え方</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {EQUIPS.map((q) => (
-            <Chip key={q} label={EQUIP_LABEL[q]} active={equip === q} onPress={() => setEquip(q)} />
+          {(['reps', 'time'] as const).map((k) => (
+            <Chip key={k} label={k === 'reps' ? '回数' : '時間（秒）'} active={kind === k} onPress={() => setKind(k)} />
           ))}
         </View>
 
@@ -93,7 +86,7 @@ function AddExerciseModal({ visible, onClose }: { visible: boolean; onClose: () 
           disabled={!name.trim()}
           style={{ marginTop: 28 }}
           onPress={() => {
-            add({ name: name.trim(), part, equip });
+            add({ name: name.trim(), part, kind, hold: kind === 'time' ? 30 : undefined });
             close();
           }}
         />

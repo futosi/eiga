@@ -8,7 +8,7 @@ import { confirm, notify } from '../../lib/platform';
 import { useStore } from '../../lib/store';
 import { C } from '../../lib/theme';
 
-const REST_OPTIONS = [0, 60, 90, 120, 180, 240];
+const REST_OPTIONS = [0, 30, 45, 60, 90, 120];
 const PRIVACY_URL = 'https://futosi.github.io/eiga/kintore/privacy.html';
 
 export default function Settings() {
@@ -19,12 +19,12 @@ export default function Settings() {
   const exportData = async () => {
     const { workouts, routines, customExercises, bodyWeights } = useStore.getState();
     const json = JSON.stringify(
-      { app: 'liftnote', exportedAt: new Date().toISOString(), workouts, routines, customExercises, bodyWeights },
+      { app: 'jijuu-note', exportedAt: new Date().toISOString(), workouts, routines, customExercises, bodyWeights },
       null,
       2,
     );
     try {
-      await Share.share({ message: json, title: 'リフトノートのデータ' });
+      await Share.share({ message: json, title: '自重ノートのデータ' });
     } catch {
       notify('書き出しに失敗しました');
     }
@@ -35,14 +35,7 @@ export default function Settings() {
       <ScrollView contentContainerStyle={ui.content}>
         <Text style={ui.h1}>設定</Text>
 
-        <SectionTitle>重量の単位</SectionTitle>
-        <View style={[ui.row, { gap: 8 }]}>
-          {(['kg', 'lb'] as const).map((u) => (
-            <Chip key={u} label={u} active={settings.unit === u} onPress={() => update({ unit: u })} />
-          ))}
-        </View>
-
-        <SectionTitle>休憩タイマー</SectionTitle>
+        <SectionTitle>セット間の休憩</SectionTitle>
         <Text style={[ui.sub, { marginBottom: 10 }]}>セットを完了すると自動でカウントダウンを開始します</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {REST_OPTIONS.map((sec) => (
@@ -89,7 +82,7 @@ export default function Settings() {
           onPress={() =>
             confirm(
               'すべてのデータを削除',
-              'ワークアウトの履歴、ルーティン、カスタム種目、体重の記録をすべて削除します。元に戻せません。',
+              'トレーニングの履歴、メニュー、カスタム種目、体重の記録をすべて削除します。元に戻せません。',
               resetAll,
               '削除する',
               true,
@@ -105,7 +98,7 @@ export default function Settings() {
           onPress={() => Linking.openURL(PRIVACY_URL)}
         />
         <Text style={[ui.sub, { textAlign: 'center', marginTop: 20 }]}>
-          リフトノート v{Constants.expoConfig?.version ?? '1.0.0'}
+          自重ノート v{Constants.expoConfig?.version ?? '1.0.0'}
         </Text>
       </ScrollView>
     </SafeAreaView>

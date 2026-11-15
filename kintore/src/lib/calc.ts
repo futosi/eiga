@@ -1,55 +1,48 @@
-import type { PR, SetEntry, Workout } from './types';
-
-const LB_PER_KG = 2.20462262;
+import type { Kind, PR, SetEntry, Workout } from './types';
 
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
-/** kg → 表示単位の数値（小数1桁まで） */
-export function toUnit(kg: number, unit: 'kg' | 'lb'): number {
-  const v = unit === 'lb' ? kg * LB_PER_KG : kg;
-  return Math.round(v * 10) / 10;
+export const isCounted = (s: SetEntry) => s.done && (s.reps ?? 0) > 0;
+
+export function fmtSec(v: number): string {
+  const m = Math.floor(v / 60);
+  const s = Math.round(v % 60);
+  if (m === 0) return `${s}秒`;
+  return s === 0 ? `${m}分` : `${m}分${s}秒`;
 }
 
-export function fromUnit(v: number, unit: 'kg' | 'lb'): number {
-  return unit === 'lb' ? v / LB_PER_KG : v;
+/** 回数は「20回」、時間は「45秒」「1分30秒」 */
+export function fmtVal(kind: Kind, v: number): string {
+  return kind === 'time' ? fmtSec(v) : `${v}回`;
 }
 
-export function fmtNum(v: number): string {
-  return Number.isInteger(v) ? String(v) : v.toFixed(1);
+export interface Totals {
+  reps: number;
+  seconds: number;
+  sets: number;
 }
 
-export function fmtWeight(kg: number, unit: 'kg' | 'lb'): string {
-  return fmtNum(toUnit(kg, unit));
-}
-
-/** 推定1RM (Epley)。回数が多いほど誤差が大きいので 12 回までを対象にする。 */
-export function e1rm(weight: number, reps: number): number {
-  if (weight <= 0 || reps <= 0) return 0;
-  if (reps === 1) return weight;
-  return weight * (1 + Math.min(reps, 12) / 30);
-}
-
-export const isCounted = (s: SetEntry) => s.done && !s.warmup && (s.reps ?? 0) > 0;
-
-export function setVolume(s: SetEntry): number {
-  return isCounted(s) ? (s.weight ?? 0) * (s.reps ?? 0) : 0;
-}
-
-export function workoutVolume(w: Workout): number {
-  return w.exercises.reduce((a, ex) => a + ex.sets.reduce((b, s) => b + setVolume(s), 0), 0);
-}
-
-export function workoutSetCount(w: Workout): number {
-  return w.exercises.reduce((a, ex) => a + ex.sets.filter(isCounted).length, 0);
+export function workoutTotals(w: Workout, kindOf: (exerciseId: string) => Kind): Totals {
+  const t: Totals = { reps: 0, seconds: 0, sets: 0 };
+  for (const ex of w.exercises) {
+    const kind = kindOf(ex.exerciseId);
+    for (const s of ex.sets) {
+      if (!isCounted(s)) continue;
+      t.sets++;
+      if (kind === 'time') t.seconds += s.reps ?? 0;
+      else t.reps += s.reps ?? 0;
+    }
+  }
+  return t;
 }
 
 export interface ExerciseSession {
   workoutId: string;
   date: number;
   sets: SetEntry[];
-  maxWeight: number;
-  bestE1rm: number;
-  volume: number;
+  /** 1セットの最大（回数または秒） */
+  best: number;
+  total: number;
 }
 
 /** ある種目の実施履歴（新しい順） */
@@ -61,19 +54,32 @@ export function exerciseSessions(workouts: Workout[], exerciseId: string): Exerc
       .flatMap((x) => x.sets)
       .filter(isCounted);
     if (!sets.length) continue;
+    const vals = sets.map((s) => s.reps ?? 0);
     out.push({
       workoutId: w.id,
       date: w.startedAt,
       sets,
-      maxWeight: Math.max(...sets.map((s) => s.weight ?? 0)),
-      bestE1rm: Math.max(...sets.map((s) => e1rm(s.weight ?? 0, s.reps ?? 0))),
-      volume: sets.reduce((a, s) => a + setVolume(s), 0),
+      best: Math.max(...vals),
+      total: vals.reduce((a, b) => a + b, 0),
     });
   }
   return out.sort((a, b) => b.date - a.date);
 }
 
-/** 完了したワークアウトで更新された自己ベストを検出する */
+/** 期間内の合計（回数または秒） */
+export function totalOf(workouts: Workout[], exerciseId: string, since = 0): number {
+  let sum = 0;
+  for (const w of workouts) {
+    if (w.startedAt < since) continue;
+    for (const ex of w.exercises) {
+      if (ex.exerciseId !== exerciseId) continue;
+      for (const s of ex.sets) if (isCounted(s)) sum += s.reps ?? 0;
+    }
+  }
+  return sum;
+}
+
+/** 完了したワークアウトで更新された自己ベスト（1セットの最大）を検出する */
 export function detectPRs(finished: Workout, previous: Workout[]): PR[] {
   const prs: PR[] = [];
   const seen = new Set<string>();
@@ -81,14 +87,12 @@ export function detectPRs(finished: Workout, previous: Workout[]): PR[] {
     if (seen.has(ex.exerciseId)) continue;
     seen.add(ex.exerciseId);
     const now = exerciseSessions([finished], ex.exerciseId)[0];
-    if (!now || now.maxWeight <= 0) continue;
+    if (!now) continue;
     const past = exerciseSessions(previous, ex.exerciseId);
     if (!past.length) continue; // 初回は自己ベスト扱いにしない
-    const pastW = Math.max(...past.map((p) => p.maxWeight));
-    const pastE = Math.max(...past.map((p) => p.bestE1rm));
-    if (now.maxWeight > pastW) prs.push({ exerciseId: ex.exerciseId, kind: 'weight', value: now.maxWeight });
-    else if (now.bestE1rm > pastE + 0.01)
-      prs.push({ exerciseId: ex.exerciseId, kind: 'e1rm', value: now.bestE1rm });
+    if (now.best > Math.max(...past.map((p) => p.best))) {
+      prs.push({ exerciseId: ex.exerciseId, value: now.best });
+    }
   }
   return prs;
 }
@@ -100,6 +104,12 @@ export function startOfWeek(t: number): number {
   d.setHours(0, 0, 0, 0);
   const dow = (d.getDay() + 6) % 7; // 月曜始まり
   d.setDate(d.getDate() - dow);
+  return d.getTime();
+}
+
+export function startOfDay(t: number): number {
+  const d = new Date(t);
+  d.setHours(0, 0, 0, 0);
   return d.getTime();
 }
 
@@ -152,4 +162,8 @@ export function weekStreak(workouts: Workout[], goal: number, now = Date.now()):
     wk = prevWeek(wk);
   }
   return streak;
+}
+
+export function fmtNum(v: number): string {
+  return Number.isInteger(v) ? String(v) : v.toFixed(1);
 }

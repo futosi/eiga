@@ -35,9 +35,10 @@ export default function RootLayout() {
           name="workout"
           options={{ gestureEnabled: false }}
         />
+        <Stack.Screen name="stretch" options={{ gestureEnabled: false }} />
         <Stack.Screen name="exercise/[id]" options={{ title: '種目' }} />
-        <Stack.Screen name="history/[id]" options={{ title: 'ワークアウト' }} />
-        <Stack.Screen name="routine/[id]" options={{ title: 'ルーティン' }} />
+        <Stack.Screen name="history/[id]" options={{ title: '記録' }} />
+        <Stack.Screen name="routine/[id]" options={{ title: 'メニュー' }} />
       </Stack>
     </>
   );

@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ExercisePicker } from '../components/ExercisePicker';
 import { Btn, Card, IconBtn, NumInput, s as ui } from '../components/ui';
-import { fmtClock, fmtWeight, fromUnit, toUnit } from '../lib/calc';
+import { fmtClock, fmtVal } from '../lib/calc';
 import {
   cancelRestNotification,
   confirm,
@@ -78,7 +78,7 @@ export default function WorkoutScreen() {
     if (doneCount === 0) {
       confirm(
         '完了したセットがありません',
-        'セットの右のチェックを付けると記録されます。このワークアウトを破棄しますか？',
+        'セットの右の「完了」にチェックを付けると記録されます。このトレーニングを破棄しますか？',
         leaveDiscarding,
         '破棄する',
         true,
@@ -94,7 +94,7 @@ export default function WorkoutScreen() {
     };
     if (openCount > 0) {
       confirm(
-        'ワークアウトを終了',
+        'トレーニングを終了',
         `チェックの付いていない ${openCount} セットは記録されません。終了しますか？`,
         go,
         '終了する',
@@ -103,13 +103,7 @@ export default function WorkoutScreen() {
   };
 
   const discard = () =>
-    confirm(
-      'ワークアウトを破棄',
-      '入力した内容は保存されません。',
-      leaveDiscarding,
-      '破棄する',
-      true,
-    );
+    confirm('トレーニングを破棄', '入力した内容は保存されません。', leaveDiscarding, '破棄する', true);
 
   return (
     <SafeAreaView style={ui.screen} edges={['bottom']}>
@@ -132,7 +126,7 @@ export default function WorkoutScreen() {
           headerRight: () => (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="ワークアウトを終了"
+              accessibilityLabel="トレーニングを終了"
               hitSlop={14}
               onPress={finish}
               style={[st.navBtn, st.finishBtn]}>
@@ -149,16 +143,16 @@ export default function WorkoutScreen() {
           contentContainerStyle={[ui.content, { paddingTop: 4 }]}
           keyboardShouldPersistTaps="handled">
           <TextInput
-            accessibilityLabel="ワークアウト名"
+            accessibilityLabel="トレーニング名"
             value={active.name}
             onChangeText={renameActive}
-            placeholder="ワークアウト名"
+            placeholder="トレーニング名"
             placeholderTextColor={C.dim}
             style={st.title}
           />
 
           <Text style={st.hint}>
-            重量と回数を入れて、セットが終わったら右の「完了」にチェック。休憩タイマーが始まり、チェックしたセットだけが記録されます。
+            回数を入れて、セットが終わったら右の「完了」にチェック。休憩タイマーが始まり、チェックしたセットだけが記録されます。
           </Text>
 
           {active.exercises.map((we) => (
@@ -172,7 +166,7 @@ export default function WorkoutScreen() {
           )}
 
           <Btn label="種目を追加" icon="add" kind="soft" onPress={() => setPicker(true)} />
-          <Btn label="ワークアウトを破棄" kind="danger" onPress={discard} style={{ marginTop: 12 }} />
+          <Btn label="トレーニングを破棄" kind="danger" onPress={discard} style={{ marginTop: 12 }} />
         </ScrollView>
         <RestBar />
       </KeyboardAvoidingView>
@@ -201,7 +195,6 @@ function Elapsed({ startedAt }: { startedAt: number }) {
 
 function ExerciseCard({ we }: { we: WorkoutExercise }) {
   const lookup = useExerciseLookup();
-  const unit = useStore((s) => s.settings.unit);
   const workouts = useStore((s) => s.workouts);
   const addSet = useStore((s) => s.addSet);
   const removeSet = useStore((s) => s.removeSet);
@@ -213,6 +206,7 @@ function ExerciseCard({ we }: { we: WorkoutExercise }) {
 
   const ex = lookup(we.exerciseId);
   const prev = lastSetsOf(workouts, we.exerciseId);
+  const unitLabel = ex.kind === 'time' ? '秒' : '回';
 
   return (
     <Card style={{ marginBottom: 14, paddingHorizontal: 12 }}>
@@ -228,7 +222,7 @@ function ExerciseCard({ we }: { we: WorkoutExercise }) {
           label={`${ex.name}を削除`}
           size={20}
           onPress={() =>
-            confirm('種目を削除', `${ex.name} をこのワークアウトから外しますか？`, () =>
+            confirm('種目を削除', `${ex.name} をこのトレーニングから外しますか？`, () =>
               removeExercise(we.id),
             )
           }
@@ -240,8 +234,7 @@ function ExerciseCard({ we }: { we: WorkoutExercise }) {
           セット
         </Text>
         <Text style={[st.th, st.cPrev]}>前回</Text>
-        <Text style={[st.th, st.cIn]}>{unit}</Text>
-        <Text style={[st.th, st.cIn]}>回</Text>
+        <Text style={[st.th, st.cIn]}>{unitLabel}</Text>
         <Text style={[st.th, st.cChk]}>完了</Text>
       </View>
 
@@ -266,28 +259,18 @@ function ExerciseCard({ we }: { we: WorkoutExercise }) {
               accessibilityLabel="前回の値を入力"
               style={st.cPrev}
               disabled={!p}
-              onPress={() => p && updateSet(we.id, set.id, { weight: p.weight, reps: p.reps })}>
+              onPress={() => p && updateSet(we.id, set.id, { reps: p.reps })}>
               <Text style={st.prev} numberOfLines={1}>
-                {p ? `${fmtWeight(p.weight ?? 0, unit)} × ${p.reps}` : '—'}
+                {p ? fmtVal(ex.kind, p.reps ?? 0) : '—'}
               </Text>
             </Pressable>
             <View style={st.cIn}>
               <NumInput
-                label={`${ex.name} セット${i + 1} 重量`}
-                decimal
-                value={set.weight == null ? null : toUnit(set.weight, unit)}
-                onChange={(v) =>
-                  updateSet(we.id, set.id, { weight: v == null ? null : fromUnit(v, unit) })
-                }
-                placeholder="0"
-              />
-            </View>
-            <View style={st.cIn}>
-              <NumInput
-                label={`${ex.name} セット${i + 1} 回数`}
+                label={`${ex.name} セット${i + 1} ${unitLabel}`}
                 value={set.reps}
                 onChange={(v) => updateSet(we.id, set.id, { reps: v })}
                 placeholder="0"
+                style={{ paddingVertical: 11, fontSize: 18 }}
               />
             </View>
             <Pressable
@@ -296,15 +279,15 @@ function ExerciseCard({ we }: { we: WorkoutExercise }) {
               accessibilityState={{ checked: set.done }}
               style={st.cChk}
               onPress={() => {
-                if (!set.done && !(set.reps && set.reps > 0)) return; // 回数未入力は完了にしない
+                if (!set.done && !(set.reps && set.reps > 0)) return; // 未入力は完了にしない
                 tap();
-                if (toggleSet(we.id, set.id)) {
+                if (toggleSet(we.id, set.id) && ex.part !== 'stretch') {
                   startRest();
                   scheduleRestNotification(restSec);
                 }
               }}>
               <View style={[st.check, set.done && { backgroundColor: C.accent, borderColor: C.accent }]}>
-                <Ionicons name="checkmark" size={18} color={set.done ? C.onAccent : C.dim} />
+                <Ionicons name="checkmark" size={20} color={set.done ? C.onAccent : C.dim} />
               </View>
             </Pressable>
           </View>
@@ -394,9 +377,9 @@ const st = StyleSheet.create({
   setDone: { backgroundColor: C.accentDim },
   th: { color: C.dim, fontSize: 12, fontWeight: '700', textAlign: 'center' },
   cNo: { width: 42, alignItems: 'center' },
-  cPrev: { flex: 1.3, alignItems: 'center' },
-  cIn: { flex: 1 },
-  cChk: { width: 40, alignItems: 'center' },
+  cPrev: { flex: 1, alignItems: 'center' },
+  cIn: { flex: 1.2 },
+  cChk: { width: 44, alignItems: 'center' },
   setNo: {
     color: C.text,
     fontWeight: '800',
@@ -411,9 +394,9 @@ const st = StyleSheet.create({
   },
   prev: { color: C.sub, fontSize: 14, fontVariant: ['tabular-nums'] },
   check: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     borderWidth: 1.5,
     borderColor: C.border,
     backgroundColor: C.card2,

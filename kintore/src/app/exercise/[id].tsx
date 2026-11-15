@@ -3,69 +3,60 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { LineChart } from '../../components/charts';
 import { Btn, Card, Empty, SectionTitle, Stat, s as ui } from '../../components/ui';
-import { exerciseSessions, fmtDate, fmtNum, fmtShortDate, fmtWeight, toUnit } from '../../lib/calc';
+import { exerciseSessions, fmtDate, fmtShortDate, fmtVal } from '../../lib/calc';
 import { confirm } from '../../lib/platform';
 import { useExerciseLookup, useStore } from '../../lib/store';
 import { C } from '../../lib/theme';
-import { EQUIP_LABEL, PART_LABEL } from '../../lib/types';
+import { KIND_LABEL, PART_LABEL } from '../../lib/types';
 
 export default function ExerciseDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const lookup = useExerciseLookup();
   const workouts = useStore((s) => s.workouts);
-  const unit = useStore((s) => s.settings.unit);
   const deleteCustom = useStore((s) => s.deleteCustomExercise);
 
   const ex = lookup(id);
   const sessions = exerciseSessions(workouts, id);
-  const weighted = sessions.some((s) => s.maxWeight > 0);
+  const isTime = ex.kind === 'time';
 
   const chart = [...sessions]
     .reverse()
     .slice(-20)
-    .map((s) => ({
-      label: fmtShortDate(s.date),
-      value: weighted ? toUnit(s.bestE1rm, unit) : Math.max(...s.sets.map((x) => x.reps ?? 0)),
-    }));
+    .map((s) => ({ label: fmtShortDate(s.date), value: s.best }));
 
-  const maxW = Math.max(0, ...sessions.map((s) => s.maxWeight));
-  const max1 = Math.max(0, ...sessions.map((s) => s.bestE1rm));
-  const maxV = Math.max(0, ...sessions.map((s) => s.volume));
-  const maxReps = Math.max(0, ...sessions.flatMap((s) => s.sets.map((x) => x.reps ?? 0)));
+  const best = Math.max(0, ...sessions.map((s) => s.best));
+  const total = sessions.reduce((a, s) => a + s.total, 0);
+  const bestDay = Math.max(0, ...sessions.map((s) => s.total));
 
   return (
     <ScrollView style={ui.screen} contentContainerStyle={ui.content}>
       <Text style={ui.h1}>{ex.name}</Text>
       <Text style={[ui.sub, { marginTop: 4 }]}>
-        {PART_LABEL[ex.part]}・{EQUIP_LABEL[ex.equip]}
+        {PART_LABEL[ex.part]}・{KIND_LABEL[ex.kind]}
         {ex.custom ? '・カスタム' : ''}
       </Text>
 
       {sessions.length === 0 ? (
         <Empty
-          icon="barbell-outline"
+          icon="body-outline"
           title="まだ記録がありません"
-          body="この種目をワークアウトで記録すると、自己ベストと推移グラフが表示されます"
+          body="この種目を記録すると、自己ベストと推移グラフが表示されます"
         />
       ) : (
         <>
-          <SectionTitle>自己ベスト</SectionTitle>
+          <SectionTitle>記録</SectionTitle>
           <Card>
-            {weighted ? (
-              <View style={ui.row}>
-                <Stat label="最大重量" value={fmtWeight(maxW, unit)} unit={unit} />
-                <Stat label="推定1RM" value={fmtWeight(max1, unit)} unit={unit} />
-                <Stat label="最大負荷量" value={fmtNum(Math.round(toUnit(maxV, unit)))} unit={unit} />
-              </View>
-            ) : (
-              <View style={ui.row}>
-                <Stat label="最大回数" value={String(maxReps)} unit="回" />
-                <Stat label="実施回数" value={String(sessions.length)} unit="回" />
-              </View>
-            )}
+            <Text style={[ui.sub, { marginBottom: 10 }]}>自己ベスト</Text>
+            <Text style={st.bestNum}>{fmtVal(ex.kind, best)}</Text>
+            <Text style={[ui.sub, { marginTop: 2, marginBottom: 14 }]}>1セットの最大</Text>
+            <Stat label="1日の最大合計" value={fmtVal(ex.kind, bestDay)} />
+            <View style={{ height: 12 }} />
+            <Stat label="累計" value={fmtVal(ex.kind, total)} />
+            <View style={{ height: 12 }} />
+            <Stat label="実施した日数" value={String(sessions.length)} unit="日" />
           </Card>
 
-          <SectionTitle>{weighted ? `推定1RMの推移 (${unit})` : '最大回数の推移'}</SectionTitle>
+          <SectionTitle>{isTime ? '1セットの最長時間の推移（秒）' : '1セットの最大回数の推移'}</SectionTitle>
           <Card>
             <LineChart data={chart} />
           </Card>
@@ -79,13 +70,7 @@ export default function ExerciseDetail() {
               <Card style={{ marginBottom: 10 }}>
                 <Text style={st.date}>{fmtDate(s.date)}</Text>
                 <Text style={st.sets}>
-                  {s.sets
-                    .map((x) =>
-                      (x.weight ?? 0) > 0
-                        ? `${fmtWeight(x.weight ?? 0, unit)}${unit}×${x.reps}`
-                        : `${x.reps}回`,
-                    )
-                    .join('　')}
+                  {s.sets.map((x) => fmtVal(ex.kind, x.reps ?? 0)).join('　')}
                 </Text>
               </Card>
             </Pressable>
@@ -102,7 +87,7 @@ export default function ExerciseDetail() {
           onPress={() =>
             confirm(
               '種目を削除',
-              '種目一覧とルーティンから削除します。過去の記録は残ります。',
+              '種目一覧とメニューから削除します。過去の記録は残ります。',
               () => {
                 router.back();
                 deleteCustom(ex.id);
@@ -118,6 +103,7 @@ export default function ExerciseDetail() {
 }
 
 const st = StyleSheet.create({
+  bestNum: { color: C.accent, fontSize: 40, fontWeight: '900', fontVariant: ['tabular-nums'] },
   date: { color: C.text, fontSize: 14, fontWeight: '700', marginBottom: 4 },
   sets: { color: C.sub, fontSize: 14, lineHeight: 21, fontVariant: ['tabular-nums'] },
 });

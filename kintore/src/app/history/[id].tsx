@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Btn, Card, Empty, s as ui } from '../../components/ui';
 import { WorkoutSummary } from '../../components/WorkoutSummary';
-import { e1rm, fmtWeight, uid } from '../../lib/calc';
+import { fmtVal, uid } from '../../lib/calc';
 import { confirm, notify } from '../../lib/platform';
 import { useExerciseLookup, useStore } from '../../lib/store';
 import { C } from '../../lib/theme';
@@ -12,21 +12,22 @@ import { C } from '../../lib/theme';
 export default function WorkoutDetail() {
   const { id, done } = useLocalSearchParams<{ id: string; done?: string }>();
   const w = useStore((s) => s.workouts.find((x) => x.id === id));
-  const unit = useStore((s) => s.settings.unit);
   const active = useStore((s) => s.active);
   const deleteWorkout = useStore((s) => s.deleteWorkout);
   const repeatWorkout = useStore((s) => s.repeatWorkout);
   const saveRoutine = useStore((s) => s.saveRoutine);
   const lookup = useExerciseLookup();
 
-  if (!w) return <Empty icon="alert-circle-outline" title="ワークアウトが見つかりません" />;
+  if (!w) return <Empty icon="alert-circle-outline" title="記録が見つかりません" />;
+
+  const isStretch = w.exercises.length > 0 && w.exercises.every((x) => lookup(x.exerciseId).part === 'stretch');
 
   const repeat = () => {
     const go = () => {
       repeatWorkout(w);
       router.push('/workout');
     };
-    if (active) confirm('進行中のワークアウトがあります', '破棄して新しく始めますか？', go, '新しく始める', true);
+    if (active) confirm('進行中のトレーニングがあります', '破棄して新しく始めますか？', go, '新しく始める', true);
     else go();
   };
 
@@ -48,10 +49,8 @@ export default function WorkoutDetail() {
             <Text style={{ color: C.gold, fontSize: 16, fontWeight: '800' }}>自己ベスト更新</Text>
           </View>
           {w.prs!.map((pr) => (
-            <Text key={pr.exerciseId + pr.kind} style={st.prLine}>
-              {lookup(pr.exerciseId).name}：{pr.kind === 'weight' ? '最大重量' : '推定1RM'}{' '}
-              {fmtWeight(pr.value, unit)}
-              {unit}
+            <Text key={pr.exerciseId} style={st.prLine}>
+              {lookup(pr.exerciseId).name}：1セット {fmtVal(lookup(pr.exerciseId).kind, pr.value)}
             </Text>
           ))}
         </Card>
@@ -67,23 +66,18 @@ export default function WorkoutDetail() {
             {x.sets.map((s, i) => (
               <View key={s.id} style={st.setRow}>
                 <Text style={st.setNo}>{i + 1}</Text>
-                <Text style={st.setMain}>
-                  {fmtWeight(s.weight ?? 0, unit)} {unit} × {s.reps} 回
-                </Text>
-                <Text style={st.setSub}>
-                  {(s.weight ?? 0) > 0
-                    ? `1RM ${fmtWeight(e1rm(s.weight ?? 0, s.reps ?? 0), unit)}`
-                    : ''}
-                </Text>
+                <Text style={st.setMain}>{fmtVal(ex.kind, s.reps ?? 0)}</Text>
               </View>
             ))}
           </Card>
         );
       })}
 
-      <Btn label="同じメニューでもう一度" icon="repeat" onPress={repeat} style={{ marginTop: 20 }} />
+      {!isStretch && (
+        <Btn label="同じメニューでもう一度" icon="repeat" onPress={repeat} style={{ marginTop: 20 }} />
+      )}
       <Btn
-        label="ルーティンとして保存"
+        label="メニューとして保存"
         icon="bookmark-outline"
         kind="ghost"
         style={{ marginTop: 12 }}
@@ -91,9 +85,14 @@ export default function WorkoutDetail() {
           saveRoutine({
             id: uid(),
             name: w.name,
-            items: w.exercises.map((x) => ({ exerciseId: x.exerciseId, sets: x.sets.length })),
+            type: isStretch ? 'stretch' : 'train',
+            items: w.exercises.map((x) => ({
+              exerciseId: x.exerciseId,
+              sets: isStretch ? 1 : x.sets.length,
+              hold: isStretch ? x.sets[0]?.reps ?? undefined : undefined,
+            })),
           });
-          notify('ルーティンに保存しました', 'ホーム画面から開始できます');
+          notify('メニューに保存しました', 'ホーム画面から開始できます');
         }}
       />
       <Btn
@@ -104,7 +103,7 @@ export default function WorkoutDetail() {
         onPress={() =>
           confirm(
             '記録を削除',
-            'このワークアウトの記録を削除します。元に戻せません。',
+            'この記録を削除します。元に戻せません。',
             () => {
               router.canGoBack() ? router.back() : router.replace('/history');
               deleteWorkout(w.id);
@@ -134,5 +133,4 @@ const st = StyleSheet.create({
   setRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 5, gap: 12 },
   setNo: { color: C.dim, width: 20, fontWeight: '700', textAlign: 'center' },
   setMain: { color: C.text, fontSize: 15, fontWeight: '600', flex: 1, fontVariant: ['tabular-nums'] },
-  setSub: { color: C.dim, fontSize: 13, fontVariant: ['tabular-nums'] },
 });
