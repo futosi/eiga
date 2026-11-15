@@ -140,6 +140,10 @@ export default function WorkoutScreen() {
             style={st.title}
           />
 
+          <Text style={st.hint}>
+            重量と回数を入れて、セットが終わったら右の「完了」にチェック。休憩タイマーが始まり、チェックしたセットだけが記録されます。
+          </Text>
+
           {active.exercises.map((we) => (
             <ExerciseCard key={we.id} we={we} />
           ))}
@@ -221,7 +225,7 @@ function ExerciseCard({ we }: { we: WorkoutExercise }) {
         <Text style={[st.th, st.cPrev]}>前回</Text>
         <Text style={[st.th, st.cIn]}>{unit}</Text>
         <Text style={[st.th, st.cIn]}>回</Text>
-        <View style={st.cChk} />
+        <Text style={[st.th, st.cChk]}>完了</Text>
       </View>
 
       {we.sets.map((set, i) => {
@@ -360,6 +364,7 @@ const st = StyleSheet.create({
   },
   elapsed: { color: C.text, fontSize: 16, fontWeight: '700', fontVariant: ['tabular-nums'] },
   title: { color: C.text, fontSize: 24, fontWeight: '900', paddingVertical: 8, marginBottom: 8 },
+  hint: { color: C.sub, fontSize: 13, lineHeight: 19, marginBottom: 14 },
   exName: { color: C.accent, fontSize: 17, fontWeight: '800' },
   setRow: {
     flexDirection: 'row',
