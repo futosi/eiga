@@ -3,9 +3,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import Stack from 'expo-router/stack';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HowToView } from '../components/HowToView';
 import { Btn, Empty, s as ui } from '../components/ui';
 import { fmtSec, uid } from '../lib/calc';
 import { confirm, success, tap } from '../lib/platform';
@@ -177,7 +178,7 @@ export default function StretchScreen() {
         }}
       />
 
-      <View style={st.body}>
+      <ScrollView contentContainerStyle={st.body}>
         <Text style={st.counter}>
           {idx + 1} / {steps.length}　・　残り約{fmtSec(remainingTotal)}
         </Text>
@@ -206,7 +207,11 @@ export default function StretchScreen() {
         </View>
 
         <Text style={st.next}>{next ? `次: ${next.name}` : '次: 最後の種目です'}</Text>
-      </View>
+
+        <View style={{ alignSelf: 'stretch', marginTop: 8 }}>
+          <HowToView exerciseId={step.exerciseId} name={step.name} collapsible figureWidth={190} />
+        </View>
+      </ScrollView>
 
       <View style={st.controls}>
         <Btn
@@ -224,21 +229,21 @@ export default function StretchScreen() {
 
 const st = StyleSheet.create({
   navBtn: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  body: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 14 },
+  body: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
   counter: { color: C.sub, fontSize: 14, fontVariant: ['tabular-nums'] },
   phase: { color: C.accent, fontSize: 16, fontWeight: '800' },
   name: { color: C.text, fontSize: 28, fontWeight: '900', textAlign: 'center' },
   ring: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: 170,
+    height: 170,
+    borderRadius: 85,
     borderWidth: 6,
     borderColor: C.card2,
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 8,
   },
-  time: { color: C.text, fontSize: 84, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  time: { color: C.text, fontSize: 72, fontWeight: '900', fontVariant: ['tabular-nums'] },
   sec: { color: C.sub, fontSize: 16, marginTop: -8 },
   track: { width: '100%', height: 8, borderRadius: 4, backgroundColor: C.card2, overflow: 'hidden' },
   fill: { height: 8, borderRadius: 4 },

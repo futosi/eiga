@@ -12,6 +12,8 @@ import {
   workoutTotals,
 } from '../src/lib/calc.ts';
 import { BUILTIN_EXERCISES, DEFAULT_ROUTINES } from '../src/lib/exercises.ts';
+import { HOWTO } from '../src/lib/howto.ts';
+import { POSES } from '../src/lib/poses.ts';
 import type { Workout } from '../src/lib/types.ts';
 
 let n = 0;
@@ -79,4 +81,16 @@ test('標準データ: id が重複せず、メニューは存在する種目だ
   for (const r of DEFAULT_ROUTINES.filter((x) => x.type === 'stretch'))
     for (const it of r.items)
       assert.equal(BUILTIN_EXERCISES.find((e) => e.id === it.exerciseId)?.part, 'stretch', it.exerciseId);
+});
+
+test('やり方: すべてのストレッチに説明があり、絵の姿勢が存在する', () => {
+  const ids = BUILTIN_EXERCISES.map((e) => e.id);
+  for (const e of BUILTIN_EXERCISES.filter((x) => x.part === 'stretch')) {
+    assert.ok(HOWTO[e.id], `${e.id} にやり方がない`);
+  }
+  for (const [id, h] of Object.entries(HOWTO)) {
+    assert.ok(ids.includes(id), `${id} は存在しない種目`);
+    assert.ok(POSES[h.pose], `${id}: 姿勢 ${h.pose} がない`);
+    assert.ok(h.steps.length >= 3 && h.target, id);
+  }
 });

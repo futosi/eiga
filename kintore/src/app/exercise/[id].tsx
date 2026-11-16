@@ -2,8 +2,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { LineChart } from '../../components/charts';
+import { HowToView } from '../../components/HowToView';
 import { Btn, Card, Empty, SectionTitle, Stat, s as ui } from '../../components/ui';
 import { exerciseSessions, fmtDate, fmtShortDate, fmtVal } from '../../lib/calc';
+import { HOWTO } from '../../lib/howto';
 import { confirm } from '../../lib/platform';
 import { useExerciseLookup, useStore } from '../../lib/store';
 import { C } from '../../lib/theme';
@@ -35,6 +37,15 @@ export default function ExerciseDetail() {
         {PART_LABEL[ex.part]}・{KIND_LABEL[ex.kind]}
         {ex.custom ? '・カスタム' : ''}
       </Text>
+
+      {HOWTO[id] && (
+        <>
+          <SectionTitle>やり方</SectionTitle>
+          <Card>
+            <HowToView exerciseId={id} name={ex.name} />
+          </Card>
+        </>
+      )}
 
       {sessions.length === 0 ? (
         <Empty
